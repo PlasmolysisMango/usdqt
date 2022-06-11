@@ -7,7 +7,7 @@
 1. 配置QT5并将对应目录加到Path；
 2. 编译安装USD并将对应目录加到Path；
 3. 修改CMakeLists.txt；
-4. 若出现moc问题，参考[http://leanote.com/blog/post/5eec7bb9ab64417213000884]()解决。
+4. 若出现moc问题，参考[http://leanote.com/blog/post/5eec7bb9ab64417213000884](http://leanote.com/blog/post/5eec7bb9ab64417213000884)解决。
 
 ## Installation
 
