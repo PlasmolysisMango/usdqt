@@ -55,8 +55,15 @@ void OpenGLWidget::resizeGL(int w, int h)
 
 bool OpenGLWidget::initializeGLEngine()
 {
+    // test
+    // auto _hgi = pxr::Hgi::CreatePlatformDefaultHgi();
+    // pxr::HdDriver hdDriver;
+    // hdDriver.name = pxr::HgiTokens->renderDriver;
+    // hdDriver.driver = pxr::VtValue(_hgi.get());
+
     // Initialize UsdImagingGLEngine
     m_engine = std::make_unique<pxr::UsdImagingGLEngine>();
+    // use default constructor of HdDriver to connect OpenGL context of QT. 
     auto curRender = m_engine->GetCurrentRendererId();
     std::cout << curRender << std::endl;
     bool isValid = m_engine->IsHydraEnabled();
