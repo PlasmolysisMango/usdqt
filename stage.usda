@@ -10,16 +10,16 @@ def Xform "cube"
     def Cube "mesh"
     {
         color3f[] primvars:displayColor = [(1, 0, 0)]
-        float xformOp:rotateY.timeSamples = {
-            0: 0,
-            120: 360,
-        }
-        float xformOp:rotateZ = 14
-        float xformOp:rotateZ.timeSamples = {
-            0: 14,
-            120: 400,
-        }
-        uniform token[] xformOpOrder = ["xformOp:rotateY", "xformOp:rotateZ"]
+        # float xformOp:rotateY.timeSamples = {
+        #     0: 0,
+        #     120: 360,
+        # }
+        # float xformOp:rotateZ = 14
+        # float xformOp:rotateZ.timeSamples = {
+        #     0: 14,
+        #     120: 400,
+        # }
+        # uniform token[] xformOpOrder = ["xformOp:rotateY", "xformOp:rotateZ"]
     }
 }
 

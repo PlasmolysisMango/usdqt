@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     OpenGLWidget w;
 
-    w.StartAnimating();
+    // w.StartAnimating();
     w.show();
     return a.exec();
 }

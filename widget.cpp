@@ -24,6 +24,7 @@ void OpenGLWidget::initializeGL()
 {
     initializeOpenGLFunctions();
     // glClearColor(0.0f,0.5f,0.9f,1.0f);
+    glClear(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // initalize UsdImagingGLEngine
@@ -37,7 +38,16 @@ void OpenGLWidget::initializeGL()
 void OpenGLWidget::paintGL()
 {
     using namespace pxr;
-    const UsdPrim& pseudoRoot = m_stage->GetPseudoRoot();
+    // static bool once = false;
+    // auto prim = m_stage->GetPrimAtPath(SdfPath("/cube/mesh"));
+    // UsdGeomGprim xprim(prim);
+    // if (!once) {
+    //     auto op = xprim.AddRotateXYZOp();
+    //     op.Set(GfVec3f(120.0f, 120.0f, 120.0f));
+    //     once = true;
+    // }
+    // const UsdPrim& pseudoRoot = m_stage->GetPseudoRoot();
+    UsdPrim pseudoRoot = _xPrim.GetPrim();
     UsdImagingGLRenderParams renderParams;
     if (m_frame > m_stage->GetEndTimeCode()) {
         m_frame = 0.0;
@@ -55,12 +65,6 @@ void OpenGLWidget::resizeGL(int w, int h)
 
 bool OpenGLWidget::initializeGLEngine()
 {
-    // test
-    // auto _hgi = pxr::Hgi::CreatePlatformDefaultHgi();
-    // pxr::HdDriver hdDriver;
-    // hdDriver.name = pxr::HgiTokens->renderDriver;
-    // hdDriver.driver = pxr::VtValue(_hgi.get());
-
     // Initialize UsdImagingGLEngine
     m_engine = std::make_unique<pxr::UsdImagingGLEngine>();
     // use default constructor of HdDriver to connect OpenGL context of QT. 
@@ -69,6 +73,7 @@ bool OpenGLWidget::initializeGLEngine()
     bool isValid = m_engine->IsHydraEnabled();
     std::cout << (isValid ? "Yes" : "No") << std::endl;
     return isValid;
+    
 }
 
 bool OpenGLWidget::loadUsdStage(const std::string &path)
@@ -78,6 +83,7 @@ bool OpenGLWidget::loadUsdStage(const std::string &path)
     {
         std::cout << prim.GetPath() << std::endl;
     }
+    _xPrim = pxr::UsdGeomGprim(m_stage->GetPrimAtPath(pxr::SdfPath("/cube/mesh")));
     return m_stage != nullptr;
 }
 
@@ -101,10 +107,19 @@ bool OpenGLWidget::setGLEngine()
         exit(1);
     }
     m_engine->SetCameraPath(cameraPrim->GetPath());
+    // auto color = prim.GetAttribute(TfToken("primvars:displayColor"));
+    // color.Set(VtArray<GfVec3f>(1, GfVec3f(0,1,0)));
 
-    GfCamera cam = UsdGeomCamera(*cameraPrim).GetCamera(1);
+    auto ucam = UsdGeomCamera(*cameraPrim);
+
+
+    // auto attr = ucam.GetFocusDistanceAttr();
+    // attr.Set(20);
+
+    GfCamera cam = ucam.GetCamera(1);
     const GfFrustum frustum = cam.GetFrustum();
     const GfVec3d cameraPos = frustum.GetPosition();
+    _cameraPos = cameraPos;
 
     const GfVec4f SCENE_AMBIENT(0.01f, 0.01f, 0.01f, 1.0f);
     const GfVec4f SPECULAR_DEFAULT(0.1f, 0.1f, 0.1f, 1.0f);
@@ -134,17 +149,95 @@ bool OpenGLWidget::setGLEngine()
     m_engine->SetRenderViewport(GfVec4d(0, 0, 800, 800));
     const GfVec4f CLEAR_COLOR(0.0f);
 
-    glEnable(GL_DEPTH_TEST);
-    //glViewport(0, 0, 800, 800);
-    glClearColor(1, 0, 0, 1);
-    glClearDepth(1.0);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glClear(GL_DEPTH_BUFFER_BIT);
-
     const GLfloat CLEAR_DEPTH[1] = { 1.0f };
     // m_rootPrim = m_stage->GetPseudoRoot();
 
     m_engine->SetEnablePresentation(true);
 
     return m_engine->IsHydraEnabled();
+}
+
+void OpenGLWidget::wheelEvent(QWheelEvent *event)
+{
+    // static int z_zoom = 20;
+    int length = 2;
+    if(event->delta() > 0) {           
+        std::cout << "zoom+" << std::endl;   
+        // z_zoom -= length;
+    } else {                          
+        std::cout << "zoom-" << std::endl;   
+        length *= -1;
+    }
+    setCameraOffset(0, 0, -length);
+    setRotation({120.0,120.0,120.0});
+    setTranslate({0,1,0});
+}
+
+void OpenGLWidget::setCameraOffset(int x, int y, int z)
+{
+    using namespace pxr;
+    // cameraPrim should be get in time. 
+    auto cameraPrim = &m_stage->GetPrimAtPath(SdfPath("/cams/camera1"));
+    auto translate = cameraPrim->GetAttribute(TfToken("xformOp:translate"));
+    _cameraPos[0] += x;
+    _cameraPos[1] += y;
+    _cameraPos[2] += z;
+    translate.Set(_cameraPos);
+    auto ucam = UsdGeomCamera(*cameraPrim);
+    GfCamera cam = ucam.GetCamera(1);
+    const GfFrustum frustum = cam.GetFrustum();
+    m_engine->SetCameraState(
+        frustum.ComputeViewMatrix(),
+        frustum.ComputeProjectionMatrix());
+    this->update();
+}
+
+void OpenGLWidget::setRotation(const pxr::GfVec3f &vec)
+{
+    using namespace pxr;
+    _xPrim.ClearXformOpOrder();
+    auto op = _xPrim.AddRotateXYZOp();
+    op.Set(vec);
+    this->update();
+}
+
+void OpenGLWidget::setTranslate(const pxr::GfVec3d &vec)
+{
+    using namespace pxr;
+    _xPrim.ClearXformOpOrder();
+    auto op = _xPrim.AddTranslateOp();
+    op.Set(vec);
+    this->update();
+}
+
+// void OpenGLWidget::mousePressEvent(QMouseEvent *event) 
+// {
+//     if (event->buttons() & Qt::MiddleButton) {
+//         _oldPos = event->globalPos();
+//         std::cout << "press" << std::endl;
+//     }
+// }
+
+// void OpenGLWidget::mouseReleaseEvent(QMouseEvent *event) 
+// {
+//     auto offset = event->globalPos() - _oldPos;
+//     _oldPos = event->globalPos();
+//     setCameraOffset(1, 1, 0);
+//     std::cout << "release" << std::endl;
+// }
+
+void OpenGLWidget::mouseMoveEvent(QMouseEvent *event)
+{
+    if (event->buttons() & Qt::MiddleButton) {
+        auto offset = event->globalPos() - _oldPos;
+         std::cout << offset.x() << " " << offset.y() << std::endl;
+        _oldPos = event->globalPos();
+        int x, y;
+        x = y = 1;
+        if (offset.x() > 0)
+            x = -x;
+        if (offset.y() > 0)
+            y = -y;
+        setCameraOffset(x, y, 0);
+    }
 }
