@@ -22,7 +22,7 @@ cmake ..
 * [X] 使用QT创建OpenGL上下文并连接Hydra进行渲染；
 * [ ] 提供动画播放的开关Button；
 * [X] 提供旋转、改变视角的功能（借助camera和xformop）；
-* [ ] ...
+* [ ] 为没有设置camera的usd文件提供一个默认的camera。
 
 ## Question or Discovery
 
