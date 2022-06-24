@@ -45,7 +45,7 @@ private:
     pxr::UsdGeomGprim _xPrim;
 
     // camera position
-    pxr::GfVec3d _cameraPos;
+    pxr::GfVec3d _cameraPos = {0,0,20};
 
 private:
     bool initializeGLEngine();
@@ -54,17 +54,43 @@ private:
 
 protected:
     void wheelEvent(QWheelEvent *event) override; //滚轮事件
-    // void mousePressEvent(QMouseEvent *event) override; //鼠标按键按下
+    void mousePressEvent(QMouseEvent *event) override; //鼠标按键按下
     // void mouseReleaseEvent(QMouseEvent *event) override; //鼠标按键抬起
     // void mouseDoubleClickEvent(QMouseEvent *event) override; //鼠标按键双击
     void mouseMoveEvent(QMouseEvent *event) override; //鼠标移动
 private:
-    QPoint _oldPos; // old position
+    QPoint _mousePos; // position of mouse
+    pxr::GfVec3d _rotation{0,0,0}; // Rotation of this status
+    pxr::GfVec3d _position{0,0,0}; // position of model
 
 private:
-    void setCameraOffset(int x, int y, int z);
-    void setRotation(const pxr::GfVec3f &vec);
+    void setCamera(const pxr::GfVec3d &vec);
+    void setCameraOffset(const pxr::GfVec3d &vec);
+    void setRotation(const pxr::GfVec3d &vec);
+    void setRotationOffset(const pxr::GfVec3d &vec);
     void setTranslate(const pxr::GfVec3d &vec);
+    void setTranslateOffset(const pxr::GfVec3d &vec);
+
+    pxr::UsdGeomXformOp getOrCreateXformOp(pxr::UsdGeomXformOp::Type type);
+
+    // T must be type that XformOp required.
+    // e.g. setXformOp(pxr::UsdGeomXformOp::TypeRotateXYZ, pxr::GfVec3d(120.0,120.0,120.0));
+    template <typename T>
+    void setXformOp(pxr::UsdGeomXformOp::Type type, const T &vec) {
+        auto &op = getOrCreateXformOp(type);
+        op.Set(vec);
+        this->update();
+    }
+
+    template <typename T>
+    void setXformOpOffset(pxr::UsdGeomXformOp::Type type, const T &vec) {
+        auto &op = getOrCreateXformOp(type);
+        T cur_vec;
+        op.Get(&cur_vec);
+        cur_vec += vec;
+        op.Set(cur_vec);
+        this->update();
+    }
 
 };
 #endif // WIDGET_H

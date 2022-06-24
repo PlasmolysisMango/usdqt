@@ -30,7 +30,7 @@ void OpenGLWidget::initializeGL()
     // initalize UsdImagingGLEngine
     initializeGLEngine();
     // load .usd file
-    loadUsdStage("E:\\github\\Usd_atfx\\qt\\usdqt\\stage.usda");
+    loadUsdStage("E:\\github\\usd_atfx\\usdqt\\stage.usda");
     // set engine
     setGLEngine();
 }
@@ -101,20 +101,15 @@ bool OpenGLWidget::setGLEngine()
             break;
         }
     }
+
     if (!cameraPrim)
     {
         std::cout << "No camera found on stage" << '\n';
-        exit(1);
+        exit(0);
     }
     m_engine->SetCameraPath(cameraPrim->GetPath());
-    // auto color = prim.GetAttribute(TfToken("primvars:displayColor"));
-    // color.Set(VtArray<GfVec3f>(1, GfVec3f(0,1,0)));
 
     auto ucam = UsdGeomCamera(*cameraPrim);
-
-
-    // auto attr = ucam.GetFocusDistanceAttr();
-    // attr.Set(20);
 
     GfCamera cam = ucam.GetCamera(1);
     const GfFrustum frustum = cam.GetFrustum();
@@ -159,30 +154,23 @@ bool OpenGLWidget::setGLEngine()
 
 void OpenGLWidget::wheelEvent(QWheelEvent *event)
 {
-    // static int z_zoom = 20;
-    int length = 2;
+    double length = 1.5;
     if(event->delta() > 0) {           
         std::cout << "zoom+" << std::endl;   
-        // z_zoom -= length;
     } else {                          
         std::cout << "zoom-" << std::endl;   
         length *= -1;
     }
-    setCameraOffset(0, 0, -length);
-    setRotation({120.0,120.0,120.0});
-    setTranslate({0,1,0});
+    setCameraOffset({0, 0, -length});
 }
 
-void OpenGLWidget::setCameraOffset(int x, int y, int z)
+void OpenGLWidget::setCamera(const pxr::GfVec3d &vec)
 {
     using namespace pxr;
     // cameraPrim should be get in time. 
     auto cameraPrim = &m_stage->GetPrimAtPath(SdfPath("/cams/camera1"));
     auto translate = cameraPrim->GetAttribute(TfToken("xformOp:translate"));
-    _cameraPos[0] += x;
-    _cameraPos[1] += y;
-    _cameraPos[2] += z;
-    translate.Set(_cameraPos);
+    translate.Set(vec);
     auto ucam = UsdGeomCamera(*cameraPrim);
     GfCamera cam = ucam.GetCamera(1);
     const GfFrustum frustum = cam.GetFrustum();
@@ -192,31 +180,55 @@ void OpenGLWidget::setCameraOffset(int x, int y, int z)
     this->update();
 }
 
-void OpenGLWidget::setRotation(const pxr::GfVec3f &vec)
+void OpenGLWidget::setCameraOffset(const pxr::GfVec3d &vec)
 {
     using namespace pxr;
-    _xPrim.ClearXformOpOrder();
-    auto op = _xPrim.AddRotateXYZOp();
+    _cameraPos += vec;
+    setCamera(_cameraPos);
+}
+
+void OpenGLWidget::setRotation(const pxr::GfVec3d &vec)
+{
+    using namespace pxr;
+    auto &op = getOrCreateXformOp(pxr::UsdGeomXformOp::TypeRotateXYZ);
     op.Set(vec);
     this->update();
+}
+
+void OpenGLWidget::setRotationOffset(const pxr::GfVec3d &vec)
+{
+    using namespace pxr;
+    _rotation += vec;
+    setRotation(_rotation);
 }
 
 void OpenGLWidget::setTranslate(const pxr::GfVec3d &vec)
 {
     using namespace pxr;
-    _xPrim.ClearXformOpOrder();
-    auto op = _xPrim.AddTranslateOp();
+    auto &op = getOrCreateXformOp(pxr::UsdGeomXformOp::TypeTranslate);
     op.Set(vec);
+    
     this->update();
 }
 
-// void OpenGLWidget::mousePressEvent(QMouseEvent *event) 
-// {
-//     if (event->buttons() & Qt::MiddleButton) {
-//         _oldPos = event->globalPos();
-//         std::cout << "press" << std::endl;
-//     }
-// }
+void OpenGLWidget::setTranslateOffset(const pxr::GfVec3d &vec)
+{
+    using namespace pxr;
+    _position += vec;
+    setTranslate(_position);
+}
+
+void OpenGLWidget::mousePressEvent(QMouseEvent *event) 
+{
+    if (event->buttons() & Qt::LeftButton) {
+        _mousePos = event->globalPos();
+        std::cout << "press left" << std::endl;
+    }
+    if (event->buttons() & Qt::RightButton) {
+        _mousePos = event->globalPos();
+        std::cout << "press right" << std::endl;
+    }
+}
 
 // void OpenGLWidget::mouseReleaseEvent(QMouseEvent *event) 
 // {
@@ -226,18 +238,37 @@ void OpenGLWidget::setTranslate(const pxr::GfVec3d &vec)
 //     std::cout << "release" << std::endl;
 // }
 
+
+// The screen pos: x+ is right, and y+ is down. 
+// The model pos: x+ is right, y+ is up and z+ is front. 
+// The rotation is right-hand rule. 
 void OpenGLWidget::mouseMoveEvent(QMouseEvent *event)
 {
-    if (event->buttons() & Qt::MiddleButton) {
-        auto offset = event->globalPos() - _oldPos;
-         std::cout << offset.x() << " " << offset.y() << std::endl;
-        _oldPos = event->globalPos();
-        int x, y;
-        x = y = 1;
-        if (offset.x() > 0)
-            x = -x;
-        if (offset.y() > 0)
-            y = -y;
-        setCameraOffset(x, y, 0);
+    if (event->buttons() & Qt::LeftButton) {
+        auto offset = event->globalPos() - _mousePos;
+        std::cout << offset.x() << " " << offset.y() << std::endl;
+        _mousePos = event->globalPos();
+        
+        setRotationOffset({offset.y() * 1.0, offset.x() * 1.0, 0});
     }
+    if (event->buttons() & Qt::RightButton) {
+        auto offset = event->globalPos() - _mousePos;
+        std::cout << offset.x() << " " << offset.y() << std::endl;
+        _mousePos = event->globalPos();
+
+        setTranslateOffset({offset.x() / 10.0, -offset.y() / 10.0, 0});
+    }
+}
+
+pxr::UsdGeomXformOp OpenGLWidget::getOrCreateXformOp(pxr::UsdGeomXformOp::Type type)
+{
+    using namespace pxr;
+    bool reset = _xPrim.GetResetXformStack();
+    auto oplist = _xPrim.GetOrderedXformOps(&reset);
+    for (auto &op: oplist) {
+        if (op.GetOpType() == type) {
+            return op;
+        }
+    }
+    return std::move(_xPrim.AddXformOp(type));
 }
