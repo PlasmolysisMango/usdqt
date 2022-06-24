@@ -21,9 +21,10 @@ cmake ..
 
 * [X] 使用QT创建OpenGL上下文并连接Hydra进行渲染；
 * [ ] 提供动画播放的开关Button；
-* [ ] 提供旋转、改变视角的功能（借助camera的设置）；
+* [X] 提供旋转、改变视角的功能（借助camera和xformop）；
 * [ ] ...
 
 ## Question or Discovery
 
 1. 创建Hgi时，尽量调用默认的HdDriver保证正确接入到QT或其他工具创建的OpenGL context；
+2. UsdGeomXformOp采用先取出或者新建属性，再加以修改的方式；
