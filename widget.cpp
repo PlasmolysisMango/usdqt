@@ -30,7 +30,7 @@ void OpenGLWidget::initializeGL()
     // initalize UsdImagingGLEngine
     initializeGLEngine();
     // load .usd file
-    loadUsdStage("E:\\github\\usd_atfx\\usdqt\\stage.usda");
+    loadUsdStage("E:\\github\\usd_atfx\\usdqt\\simpleShading.usda");
     // set engine
     setGLEngine();
 }
@@ -38,14 +38,6 @@ void OpenGLWidget::initializeGL()
 void OpenGLWidget::paintGL()
 {
     using namespace pxr;
-    // static bool once = false;
-    // auto prim = m_stage->GetPrimAtPath(SdfPath("/cube/mesh"));
-    // UsdGeomGprim xprim(prim);
-    // if (!once) {
-    //     auto op = xprim.AddRotateXYZOp();
-    //     op.Set(GfVec3f(120.0f, 120.0f, 120.0f));
-    //     once = true;
-    // }
     // const UsdPrim& pseudoRoot = m_stage->GetPseudoRoot();
     UsdPrim pseudoRoot = _xPrim.GetPrim();
     UsdImagingGLRenderParams renderParams;
@@ -78,12 +70,20 @@ bool OpenGLWidget::initializeGLEngine()
 
 bool OpenGLWidget::loadUsdStage(const std::string &path)
 {
+    using namespace pxr;
     m_stage = pxr::UsdStage::Open(path);
+    SdfPath rootPath;
     for (const auto& prim : m_stage->Traverse()) 
     {
+        if (rootPath.IsEmpty()) {
+            rootPath = prim.GetPath();
+        }
         std::cout << prim.GetPath() << std::endl;
     }
-    _xPrim = pxr::UsdGeomGprim(m_stage->GetPrimAtPath(pxr::SdfPath("/cube/mesh")));
+    _xPrim = pxr::UsdGeomGprim(m_stage->GetPrimAtPath(rootPath));
+    // adjust the camera. 
+    auto range = computeExtentRange(_xPrim.GetPrim());
+    _scale_rate = range.GetMax().GetLength();
     return m_stage != nullptr;
 }
 
@@ -92,24 +92,33 @@ bool OpenGLWidget::setGLEngine()
     using namespace pxr;
 
     const UsdPrim* cameraPrim = nullptr;
+    SdfPath cameraPath;
+    UsdGeomCamera ucam;
     for (const auto& prim : m_stage->Traverse()) 
     {
         if (prim.GetTypeName() == "Camera")
         {
             cameraPrim = &prim;
-            std::cout << "Camera found: " << cameraPrim->GetPath() << "\n";
+            cameraPath = cameraPrim->GetPath();
+            ucam = UsdGeomCamera(*cameraPrim);
+            std::cout << "Camera found: " << cameraPath << "\n";
             break;
         }
     }
-
+    // set camera if not found. 
     if (!cameraPrim)
     {
         std::cout << "No camera found on stage" << '\n';
-        exit(0);
+        cameraPath = SdfPath("/cams/camera1");
+        cameraPrim = &m_stage->DefinePrim(cameraPath, TfToken("Camera"));
+        ucam = UsdGeomCamera(*cameraPrim);
+        auto op = ucam.AddTranslateOp();
+        // scale the camera pos
+        _cameraPos *= _scale_rate;
+        op.Set(_cameraPos);
     }
-    m_engine->SetCameraPath(cameraPrim->GetPath());
 
-    auto ucam = UsdGeomCamera(*cameraPrim);
+    m_engine->SetCameraPath(cameraPath);
 
     GfCamera cam = ucam.GetCamera(1);
     const GfFrustum frustum = cam.GetFrustum();
@@ -161,7 +170,7 @@ void OpenGLWidget::wheelEvent(QWheelEvent *event)
         std::cout << "zoom-" << std::endl;   
         length *= -1;
     }
-    setCameraOffset({0, 0, -length});
+    setCameraOffset({0, 0, -length * _scale_rate});
 }
 
 void OpenGLWidget::setCamera(const pxr::GfVec3d &vec)
@@ -256,7 +265,7 @@ void OpenGLWidget::mouseMoveEvent(QMouseEvent *event)
         std::cout << offset.x() << " " << offset.y() << std::endl;
         _mousePos = event->globalPos();
 
-        setTranslateOffset({offset.x() / 10.0, -offset.y() / 10.0, 0});
+        setTranslateOffset({offset.x() / 20.0 * _scale_rate, -offset.y() / 20.0 * _scale_rate, 0});
     }
 }
 
@@ -271,4 +280,13 @@ pxr::UsdGeomXformOp OpenGLWidget::getOrCreateXformOp(pxr::UsdGeomXformOp::Type t
         }
     }
     return std::move(_xPrim.AddXformOp(type));
+}
+
+pxr::GfRange3d OpenGLWidget::computeExtentRange(const pxr::UsdPrim &prim) 
+{
+    using namespace pxr;
+    auto bb = UsdGeomBBoxCache(UsdTimeCode(), {UsdGeomTokensType().default_, UsdGeomTokensType().render, UsdGeomTokensType().guide, UsdGeomTokensType().proxy});
+    auto res = bb.ComputeWorldBound(prim);
+    auto range = res.ComputeAlignedRange();
+    return range;
 }
