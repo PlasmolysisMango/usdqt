@@ -18,6 +18,10 @@
 #include <pxr/usdImaging/usdImagingGL/engine.h>
 #include "pxr/imaging/hgi/tokens.h"
 #include "pxr/usd/usdGeom/gprim.h"
+#include "pxr/usd/usdGeom/boundable.h"
+#include "pxr/usd/usdGeom/bboxCache.h"
+#include "pxr/usd/usdGeom/imageable.h"
+#include "pxr/usd/usdGeom/tokens.h"
 
 #include <iostream>
 #include <string>
@@ -45,7 +49,7 @@ private:
     pxr::UsdGeomGprim _xPrim;
 
     // camera position
-    pxr::GfVec3d _cameraPos = {0,0,20};
+    pxr::GfVec3d _cameraPos = {0,0,10};
 
 private:
     bool initializeGLEngine();
@@ -91,6 +95,12 @@ private:
         op.Set(cur_vec);
         this->update();
     }
+    
+    // compute the extent.
+    pxr::GfRange3d computeExtentRange(const pxr::UsdPrim &prim);
 
+private:
+    // control the relative translate / zoom operation of model. 
+    double _scale_rate = 1.0;
 };
 #endif // WIDGET_H
