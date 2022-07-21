@@ -21,6 +21,16 @@ def Xform "cube"
         # }
         # uniform token[] xformOpOrder = ["xformOp:rotateY", "xformOp:rotateZ"]
     }
+
+    def MyPrimAdapter "adapter" 
+    {
+        
+    }
+
+    def justtesting "testing" 
+    {
+        
+    }
 }
 
 def "cams"

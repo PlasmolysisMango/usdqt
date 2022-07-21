@@ -22,6 +22,7 @@
 #include "pxr/usd/usdGeom/bboxCache.h"
 #include "pxr/usd/usdGeom/imageable.h"
 #include "pxr/usd/usdGeom/tokens.h"
+#include "pxr/base/plug/registry.h"
 
 #include <iostream>
 #include <string>
@@ -34,6 +35,8 @@ public:
     OpenGLWidget(QWidget *parent = nullptr);
     ~OpenGLWidget();
     void StartAnimating();
+
+    bool addPluginfo(const std::string &path);
 
 protected:
     virtual void initializeGL() override;

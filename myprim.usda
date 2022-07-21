@@ -1,0 +1,12 @@
+#usda 1.0
+
+# def MyPrimAdapter "hello"
+# {
+    
+# }
+def Xform "cube" {
+    def cube "world" 
+    {
+        color3f[] primvars:displayColor = [(1, 0, 0)]
+    }
+}

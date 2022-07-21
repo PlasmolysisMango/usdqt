@@ -29,8 +29,10 @@ void OpenGLWidget::initializeGL()
 
     // initalize UsdImagingGLEngine
     initializeGLEngine();
+    // registry plugin
+    addPluginfo("E:\\github\\usd_atfx\\adapter\\plugInfo.json");
     // load .usd file
-    loadUsdStage("E:\\github\\usd_atfx\\usdqt\\simpleShading.usda");
+    loadUsdStage("E:\\github\\usd_atfx\\usdqt\\myprim.usda");
     // set engine
     setGLEngine();
 }
@@ -290,3 +292,12 @@ pxr::GfRange3d OpenGLWidget::computeExtentRange(const pxr::UsdPrim &prim)
     auto range = res.ComputeAlignedRange();
     return range;
 }
+
+bool OpenGLWidget::addPluginfo(const std::string &path) 
+{
+    using namespace pxr;
+    auto &plugreg = PlugRegistry::GetInstance();
+    auto ret = plugreg.RegisterPlugins(path);
+    return !ret.empty();
+}
+
